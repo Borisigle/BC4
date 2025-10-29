@@ -6,7 +6,7 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
-from indicators.market_structure import MarketStructure
+from src.indicators.market_structure import MarketStructure
 
 
 class BTCFilter:
