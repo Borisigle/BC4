@@ -23,7 +23,10 @@ export function mapCandlesToSeries(candles: Candle[]): CandleDataPoint[] {
   }));
 }
 
-export function mapIndicatorToSeries(candles: Candle[], values: number[]): LineDataPoint[] {
+export function mapIndicatorToSeries(
+  candles: Candle[],
+  values: Array<number | null | undefined>
+): LineDataPoint[] {
   return candles.map((candle, index) => ({
     time: candle.timestamp / 1000,
     value: values[index] ?? values[values.length - 1] ?? 0

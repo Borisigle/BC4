@@ -20,6 +20,8 @@ class SignalDetector:
         self,
         df_4h: pd.DataFrame,
         df_1h: pd.DataFrame,
+        cvd_4h: np.ndarray,
+        cvd_1h: np.ndarray,
         market_structure: Dict[str, object],
     ) -> Optional[Dict[str, object]]:
         if df_4h is None or df_4h.empty or df_1h is None or df_1h.empty:
@@ -39,7 +41,7 @@ class SignalDetector:
         structure_conditions = [
             support_level is not None and support_distance <= 0.01,
             "ALCISTA" in str(trend_info.get("trend", "")).upper(),
-            str(trend_info.get("structure", "")).upper() == "HH/HL",  # Higher Low
+            str(trend_info.get("structure", "")).upper() == "HH/HL",
             not np.isnan(vwap_value) and current_price >= vwap_value * 0.995,
         ]
         structure_valid = all(structure_conditions)
@@ -50,25 +52,23 @@ class SignalDetector:
         else:
             return None
 
-        orderflow_summary = self.orderflow_analyzer.analyze_volume_pressure(df_1h)
-        last_volume = float(df_1h["volume"].iloc[-1])
-        avg_volume = self._average_volume(df_1h)
-        volume_condition = avg_volume > 0 and last_volume >= avg_volume * 1.3
-        pressure_condition = orderflow_summary["pressure"] == "BUYING" and orderflow_summary["strength"] >= 20
-        orderflow_valid = volume_condition and pressure_condition
-        if orderflow_valid:
-            base_score += 20
-            reasons.append(
-                "Presión compradora fuerte (volumen ratio %.2f)" % orderflow_summary["volume_ratio"]
-            )
-        else:
+        orderflow_result = self.orderflow_analyzer.analyze_volume_pressure(df_1h, cvd_1h, lookback=4)
+        orderflow_valid = orderflow_result["pressure"] == "BUYING" and orderflow_result["score"] >= 15
+        if not orderflow_valid:
             return None
 
-        divergence_info = self.orderflow_analyzer.detect_divergence(df_1h)
-        if divergence_info and divergence_info.get("type") == "BULLISH":
-            reasons.append(f"Divergencia alcista detectada ({divergence_info['strength']})")
+        base_score += int(orderflow_result["score"])
+        reasons.append(
+            "Presión compradora real (ΔCVD %.2f | score %d)"
+            % (orderflow_result["cvd_change_normalized"], int(orderflow_result["score"]))
+        )
+
+        divergence = self.orderflow_analyzer.detect_cvd_divergence(df_1h["close"], cvd_1h, lookback=20)
+        if divergence and divergence.get("type") == "BULLISH":
+            base_score += int(divergence.get("bonus_score", 0))
+            reasons.append(f"Divergencia CVD alcista ({divergence['strength']})")
         else:
-            divergence_info = None
+            divergence = None
 
         patterns = self.pattern_detector.get_all_patterns(df_1h, support_level, None)
         pattern_valid = bool(patterns["bullish"])
@@ -94,13 +94,15 @@ class SignalDetector:
             "reasons": reasons,
             "support_level": support_level,
             "entry_zone": entry_zone,
-            "divergence": divergence_info,
+            "divergence": divergence,
         }
 
     def detect_short_setup(
         self,
         df_4h: pd.DataFrame,
         df_1h: pd.DataFrame,
+        cvd_4h: np.ndarray,
+        cvd_1h: np.ndarray,
         market_structure: Dict[str, object],
     ) -> Optional[Dict[str, object]]:
         if df_4h is None or df_4h.empty or df_1h is None or df_1h.empty:
@@ -133,25 +135,23 @@ class SignalDetector:
         else:
             return None
 
-        orderflow_summary = self.orderflow_analyzer.analyze_volume_pressure(df_1h)
-        last_volume = float(df_1h["volume"].iloc[-1])
-        avg_volume = self._average_volume(df_1h)
-        volume_condition = avg_volume > 0 and last_volume >= avg_volume * 1.3
-        pressure_condition = orderflow_summary["pressure"] == "SELLING" and orderflow_summary["strength"] >= 20
-        orderflow_valid = volume_condition and pressure_condition
-        if orderflow_valid:
-            base_score += 20
-            reasons.append(
-                "Presión vendedora dominante (volumen ratio %.2f)" % orderflow_summary["volume_ratio"]
-            )
-        else:
+        orderflow_result = self.orderflow_analyzer.analyze_volume_pressure(df_1h, cvd_1h, lookback=4)
+        orderflow_valid = orderflow_result["pressure"] == "SELLING" and orderflow_result["score"] >= 15
+        if not orderflow_valid:
             return None
 
-        divergence_info = self.orderflow_analyzer.detect_divergence(df_1h)
-        if divergence_info and divergence_info.get("type") == "BEARISH":
-            reasons.append(f"Divergencia bajista detectada ({divergence_info['strength']})")
+        base_score += int(orderflow_result["score"])
+        reasons.append(
+            "Presión vendedora real (ΔCVD %.2f | score %d)"
+            % (orderflow_result["cvd_change_normalized"], int(orderflow_result["score"]))
+        )
+
+        divergence = self.orderflow_analyzer.detect_cvd_divergence(df_1h["close"], cvd_1h, lookback=20)
+        if divergence and divergence.get("type") == "BEARISH":
+            base_score += int(divergence.get("bonus_score", 0))
+            reasons.append(f"Divergencia CVD bajista ({divergence['strength']})")
         else:
-            divergence_info = None
+            divergence = None
 
         patterns = self.pattern_detector.get_all_patterns(df_1h, None, resistance_level)
         pattern_valid = bool(patterns["bearish"])
@@ -177,7 +177,7 @@ class SignalDetector:
             "reasons": reasons,
             "resistance_level": resistance_level,
             "entry_zone": entry_zone,
-            "divergence": divergence_info,
+            "divergence": divergence,
         }
 
     def _find_closest_level(

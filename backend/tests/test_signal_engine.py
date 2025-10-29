@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import pytest
 from typing import Callable
@@ -12,6 +13,7 @@ def _make_df(values: dict[str, list[float]], symbol: str, timeframe: str, freq: 
     index = pd.date_range("2024-01-01", periods=length, freq=freq, tz="UTC")
     df = pd.DataFrame(values, index=index)
     df["datetime"] = index
+    df["timestamp"] = (index.astype("int64") // 10**9).astype(int)
     df.attrs["symbol"] = symbol
     df.attrs["timeframe"] = timeframe
     return df
@@ -99,6 +101,16 @@ def engine(monkeypatch: pytest.MonkeyPatch) -> SignalEngine:
 
     monkeypatch.setattr(engine, "_load_and_prepare_data", fake_load)
 
+    def fake_cvd(symbol: str, timeframe: str, timestamps: pd.Series) -> np.ndarray:
+        length = len(timestamps)
+        if length == 0:
+            return np.array([])
+        base = np.linspace(0, length - 1, length, dtype=float)
+        multiplier = 20.0 if timeframe == "1h" else 5.0
+        return base * multiplier
+
+    monkeypatch.setattr(engine, "_load_cvd_series", fake_cvd)
+
     sr_map = {
         "BTC/USDT": {
             "supports": [{"price": 25800.0, "touches": 3, "strength": "strong"}],
@@ -169,7 +181,7 @@ def test_scan_for_signals_produces_long_signal(engine: SignalEngine) -> None:
     signal = signals[0]
     assert signal.symbol == "ETH/USDT"
     assert signal.direction == "LONG"
-    assert signal.score >= 80
+    assert signal.score >= 65
     assert signal.stop_loss < signal.entry_price
     assert signal.take_profit_1 > signal.entry_price
     assert "TP1" in signal.to_alert_string()

@@ -3,9 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from src.config import settings
+from src.data.cvd_storage import CVDStorage
 from src.data.data_storage import DataStorage
 from src.indicators.market_structure import MarketStructure
 from src.indicators.technical_indicators import TechnicalIndicators
@@ -23,6 +25,7 @@ class SignalEngine:
 
     def __init__(self) -> None:
         self.storage = DataStorage(settings.DB_PATH)
+        self.cvd_storage = CVDStorage()
         self.technical_indicators = TechnicalIndicators()
         self.market_structure = MarketStructure()
         self.btc_filter = BTCFilter()
@@ -68,8 +71,15 @@ class SignalEngine:
                 "trend": trend,
             }
 
-            long_setup = self.signal_detector.detect_long_setup(df_4h_struct, df_1h, market_structure)
-            short_setup = self.signal_detector.detect_short_setup(df_4h_struct, df_1h, market_structure)
+            cvd_4h = (
+                self._load_cvd_series(symbol, "4h", df_4h_struct["timestamp"]) if "timestamp" in df_4h_struct else np.array([])
+            )
+            cvd_1h = (
+                self._load_cvd_series(symbol, "1h", df_1h["timestamp"]) if "timestamp" in df_1h else np.array([])
+            )
+
+            long_setup = self.signal_detector.detect_long_setup(df_4h_struct, df_1h, cvd_4h, cvd_1h, market_structure)
+            short_setup = self.signal_detector.detect_short_setup(df_4h_struct, df_1h, cvd_4h, cvd_1h, market_structure)
 
             for setup in [long_setup, short_setup]:
                 if not setup:
@@ -95,6 +105,25 @@ class SignalEngine:
             return df
         df_indicators = self.technical_indicators.add_all_indicators(df)
         return df_indicators
+
+    def _load_cvd_series(self, symbol: str, timeframe: str, timestamps: pd.Series) -> np.ndarray:
+        if timestamps is None or len(timestamps) == 0:
+            return np.array([], dtype=float)
+
+        cvd_df = self.cvd_storage.get_cvd(symbol, timeframe, limit=len(timestamps) + 10)
+        if cvd_df.empty:
+            return np.array([], dtype=float)
+
+        cvd_map = {int(row.timestamp): float(row.cvd_cumulative) for row in cvd_df.itertuples()}
+
+        aligned: List[float] = []
+        for value in timestamps:
+            if pd.isna(value):
+                aligned.append(np.nan)
+            else:
+                aligned.append(cvd_map.get(int(value), np.nan))
+
+        return np.array(aligned, dtype=float)
 
     def _create_signal(
         self,

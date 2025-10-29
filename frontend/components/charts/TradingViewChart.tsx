@@ -19,6 +19,7 @@ type SeriesCollection = {
   ema20?: LineSeriesType;
   ema50?: LineSeriesType;
   vwap?: LineSeriesType;
+  cvd?: LineSeriesType;
 };
 
 export default function TradingViewChart({ data, height = 400 }: TradingViewChartProps) {
@@ -88,6 +89,18 @@ export default function TradingViewChart({ data, height = 400 }: TradingViewChar
     });
     seriesRef.current.vwap = vwapSeries;
 
+    const cvdSeries = chart.addLineSeries({
+      color: '#00bcd4',
+      lineWidth: 2,
+      priceLineVisible: false,
+      priceScaleId: 'cvd'
+    });
+    chart.priceScale('cvd').applyOptions({
+      scaleMargins: { top: 0.7, bottom: 0.0 },
+      borderVisible: false
+    });
+    seriesRef.current.cvd = cvdSeries;
+
     const resizeObserver = new ResizeObserver(() => {
       const { clientWidth } = container;
       chart.applyOptions({ width: clientWidth, height });
@@ -106,7 +119,7 @@ export default function TradingViewChart({ data, height = 400 }: TradingViewChar
 
   useEffect(() => {
     const chart = chartRef.current;
-    const { candles, ema20, ema50, vwap } = seriesRef.current;
+    const { candles, ema20, ema50, vwap, cvd } = seriesRef.current;
     if (!chart || !candles || !ema20 || !ema50 || !vwap) {
       return;
     }
@@ -116,6 +129,9 @@ export default function TradingViewChart({ data, height = 400 }: TradingViewChar
     ema20.setData(mapIndicatorToSeries(data.candles, data.indicators.ema_20));
     ema50.setData(mapIndicatorToSeries(data.candles, data.indicators.ema_50));
     vwap.setData(mapIndicatorToSeries(data.candles, data.indicators.vwap));
+    if (cvd) {
+      cvd.setData(mapIndicatorToSeries(data.candles, data.indicators.cvd));
+    }
 
     candles.applyOptions({ priceFormat: { type: 'price', precision: 2, minMove: 0.01 } });
 

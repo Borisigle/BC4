@@ -47,6 +47,7 @@ class MarketChartIndicators(BaseModel):
     adx: List[Optional[float]]
     rsi: List[Optional[float]]
     vwap: List[Optional[float]]
+    cvd: List[Optional[float]]
 
 
 class MarketStructureLevel(BaseModel):

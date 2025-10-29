@@ -28,12 +28,13 @@ export interface ChartData {
   timeframe: string;
   candles: Candle[];
   indicators: {
-    ema_20: number[];
-    ema_50: number[];
-    atr: number[];
-    adx: number[];
-    rsi: number[];
-    vwap: number[];
+    ema_20: (number | null)[];
+    ema_50: (number | null)[];
+    atr: (number | null)[];
+    adx: (number | null)[];
+    rsi: (number | null)[];
+    vwap: (number | null)[];
+    cvd: (number | null)[];
   };
   market_structure: MarketStructure;
   trend: TrendInfo;
