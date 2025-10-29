@@ -6,3 +6,7 @@ venv/
 *.log
 .DS_Store
 backend/crypto_data.db
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+frontend/.turbo/
