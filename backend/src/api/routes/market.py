@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timezone
-from typing import Iterable, List
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, status
@@ -34,14 +34,14 @@ technical_indicators = TechnicalIndicators()
 market_structure = MarketStructure()
 btc_filter = BTCFilter()
 
-SYMBOL_MAP: dict[str, str] = {symbol.upper(): symbol for symbol in settings.SYMBOLS}
+SYMBOL_MAP: Dict[str, str] = {symbol.upper(): symbol for symbol in settings.SYMBOLS}
 SYMBOL_ORDER: List[str] = list(settings.SYMBOLS)
-ALLOWED_TIMEFRAMES: tuple[str, ...] = tuple(tf.lower() for tf in settings.TIMEFRAMES)
+ALLOWED_TIMEFRAMES: Tuple[str, ...] = tuple(tf.lower() for tf in settings.TIMEFRAMES)
 INDICATOR_PADDING = 50
 LEVEL_TOLERANCE = 0.005
 
 
-def _isoformat(value: datetime | pd.Timestamp) -> str:
+def _isoformat(value: Union[datetime, pd.Timestamp]) -> str:
     if isinstance(value, pd.Timestamp):
         if value.tzinfo is None:
             value = value.tz_localize("UTC")
@@ -57,7 +57,7 @@ def _isoformat(value: datetime | pd.Timestamp) -> str:
     return value.isoformat().replace("+00:00", "Z")
 
 
-def _sanitize_float(value: float | None) -> float | None:
+def _sanitize_float(value: Optional[float]) -> Optional[float]:
     if value is None:
         return None
     if isinstance(value, float) and math.isnan(value):
@@ -74,7 +74,7 @@ def _load_dataset(symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
     return df_indicators
 
 
-def _get_last_value(df: pd.DataFrame, column: str) -> float | None:
+def _get_last_value(df: pd.DataFrame, column: str) -> Optional[float]:
     if column not in df.columns:
         return None
     series = df[column].dropna()
@@ -83,7 +83,7 @@ def _get_last_value(df: pd.DataFrame, column: str) -> float | None:
     return float(series.iloc[-1])
 
 
-def _compute_change_24h(df: pd.DataFrame) -> float | None:
+def _compute_change_24h(df: pd.DataFrame) -> Optional[float]:
     if df.empty or "close" not in df.columns:
         return None
     if len(df) < 25:
@@ -96,7 +96,7 @@ def _compute_change_24h(df: pd.DataFrame) -> float | None:
     return change
 
 
-def _build_asset_overview(symbol: str) -> MarketAsset | None:
+def _build_asset_overview(symbol: str) -> Optional[MarketAsset]:
     df_4h = _load_dataset(symbol, "4h", settings.DEFAULT_LIMIT)
     df_1h = _load_dataset(symbol, "1h", settings.DEFAULT_LIMIT)
 
@@ -154,7 +154,7 @@ def _prepare_btc_context() -> BTCContext:
     )
 
 
-def _format_levels(levels: Iterable[dict[str, object]], df: pd.DataFrame, swing_column: str) -> List[MarketStructureLevel]:
+def _format_levels(levels: Iterable[Dict[str, object]], df: pd.DataFrame, swing_column: str) -> List[MarketStructureLevel]:
     formatted: List[MarketStructureLevel] = []
     if swing_column not in df.columns:
         return formatted
@@ -198,7 +198,7 @@ def _collect_swing_points(df: pd.DataFrame, column: str) -> List[SwingPoint]:
     return points
 
 
-def _indicator_list(df: pd.DataFrame, column: str) -> List[float | None]:
+def _indicator_list(df: pd.DataFrame, column: str) -> List[Optional[float]]:
     if column not in df.columns:
         return [None] * len(df)
     return [_sanitize_float(value) for value in df[column]]

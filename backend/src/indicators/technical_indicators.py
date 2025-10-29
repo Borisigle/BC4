@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -204,7 +204,7 @@ class TechnicalIndicators:
     def add_all_indicators(
         self,
         df: pd.DataFrame,
-        ema_periods: Iterable[int] | None = None,
+        ema_periods: Optional[Iterable[int]] = None,
         atr_period: int = 14,
         adx_period: int = 14,
         rsi_period: int = 14,
