@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List
+from typing import Dict, List
 
 
 @dataclass
@@ -34,6 +34,13 @@ class Signal:
     adx_value: float
     rsi_value: float
 
+    base_score: float
+    base_components: Dict[str, float]
+    key_levels: Dict[str, object]
+    confluence: Dict[str, object]
+    btc_multiplier: float
+    total_bonus: int
+
     def to_alert_string(self) -> str:
         """Formatea la señal para mostrar al usuario."""
         direction_icon = "🟢" if self.direction.upper() == "LONG" else "🔴"
@@ -58,4 +65,24 @@ class Signal:
             f"⚠️ RIESGO: {self.suggested_position_size:.2f}% de capital sugerido\n"
             f"⏰ Válida hasta: {self.valid_until.strftime('%H:%M UTC')}\n"
         )
+
+        if isinstance(self.confluence, dict) and self.confluence.get("count", 0):
+            levels = self.confluence.get("levels", []) or []
+            levels_display = ", ".join(str(level) for level in levels) or "N/A"
+            alert += f"🔗 Confluencia: {self.confluence['count']} niveles ({levels_display})\n"
+
+        if isinstance(self.key_levels, dict):
+            highlights = []
+            poc_weekly = self.key_levels.get("poc_weekly")
+            if isinstance(poc_weekly, (int, float)):
+                highlights.append(f"POC W: ${poc_weekly:,.2f}")
+            val = self.key_levels.get("val")
+            if isinstance(val, (int, float)):
+                highlights.append(f"VAL: ${val:,.2f}")
+            vah = self.key_levels.get("vah")
+            if isinstance(vah, (int, float)):
+                highlights.append(f"VAH: ${vah:,.2f}")
+            if highlights:
+                alert += "🔑 Key Levels: " + " | ".join(highlights) + "\n"
+
         return alert

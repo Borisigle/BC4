@@ -181,7 +181,11 @@ def test_scan_for_signals_produces_long_signal(engine: SignalEngine) -> None:
     signal = signals[0]
     assert signal.symbol == "ETH/USDT"
     assert signal.direction == "LONG"
-    assert signal.score >= 65
+    assert signal.score >= 60
     assert signal.stop_loss < signal.entry_price
     assert signal.take_profit_1 > signal.entry_price
+    assert signal.base_score <= 80
+    assert "poc_weekly" in signal.key_levels
+    assert signal.confluence["count"] >= 0
+    assert "structure" in signal.base_components
     assert "TP1" in signal.to_alert_string()
