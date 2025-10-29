@@ -5,11 +5,11 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from config import settings
-from data.data_storage import DataStorage
-from indicators.market_structure import MarketStructure
-from indicators.technical_indicators import TechnicalIndicators
-from utils.logger import get_logger
+from src.config import settings
+from src.data.data_storage import DataStorage
+from src.indicators.market_structure import MarketStructure
+from src.indicators.technical_indicators import TechnicalIndicators
+from src.utils.logger import get_logger
 from .btc_filter import BTCFilter
 from .signal import Signal
 from .signal_detector import SignalDetector
