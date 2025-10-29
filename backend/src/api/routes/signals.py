@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter
@@ -22,7 +23,7 @@ def _isoformat(dt: datetime) -> str:
     return dt.isoformat().replace("+00:00", "Z")
 
 
-def _sanitize_float(value: float | None) -> float | None:
+def _sanitize_float(value: Optional[float]) -> Optional[float]:
     if value is None:
         return None
     if isinstance(value, float) and math.isnan(value):

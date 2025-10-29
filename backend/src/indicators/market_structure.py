@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -56,7 +56,7 @@ class MarketStructure:
         tolerance: float = 0.005,
         min_touches: int = 2,
         lookback: int = 100,
-    ) -> Dict[str, List[Dict[str, float | int | str]]]:
+    ) -> Dict[str, List[Dict[str, Union[float, int, str]]]]:
         """
         Group swing points into support and resistance zones.
         """
@@ -78,7 +78,7 @@ class MarketStructure:
         resistances = [zone for zone in resistances if zone.touches >= min_touches]
         supports = [zone for zone in supports if zone.touches >= min_touches]
 
-        def _format_zone(zone: _Zone) -> Dict[str, float | int | str]:
+        def _format_zone(zone: _Zone) -> Dict[str, Union[float, int, str]]:
             if zone.touches >= 3:
                 strength = "strong"
             elif zone.touches == 2:
@@ -128,7 +128,7 @@ class MarketStructure:
         return levels
 
     @staticmethod
-    def determine_trend(df: pd.DataFrame, lookback: int = 20) -> Dict[str, float | str | bool]:
+    def determine_trend(df: pd.DataFrame, lookback: int = 20) -> Dict[str, Union[float, str, bool]]:
         """
         Determine directional bias leveraging swings, EMAs, and ADX.
         """
