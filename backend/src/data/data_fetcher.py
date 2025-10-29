@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable, Tuple
+from typing import Dict, Iterable
 
 import numpy as np
 import pandas as pd
@@ -67,7 +67,7 @@ class DataFetcher:
         if df.empty:
             raise ValueError("Received empty OHLCV dataframe")
 
-        required_columns: Tuple[str, ...] = (
+        required_columns = [
             "timestamp",
             "open",
             "high",
@@ -75,7 +75,7 @@ class DataFetcher:
             "close",
             "volume",
             "datetime",
-        )
+        ]
         missing = [col for col in required_columns if col not in df.columns]
         if missing:
             raise ValueError(f"Missing required columns: {missing}")
