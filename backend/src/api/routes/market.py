@@ -20,6 +20,7 @@ from src.api.schemas.market import (
     TrendResponse,
 )
 from src.config import settings
+from src.data.cvd_storage import CVDStorage
 from src.data.data_storage import DataStorage
 from src.indicators.market_structure import MarketStructure
 from src.indicators.technical_indicators import TechnicalIndicators
@@ -30,6 +31,7 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 storage = DataStorage(settings.DB_PATH)
+cvd_storage = CVDStorage()
 technical_indicators = TechnicalIndicators()
 market_structure = MarketStructure()
 btc_filter = BTCFilter()
@@ -204,6 +206,22 @@ def _indicator_list(df: pd.DataFrame, column: str) -> List[Optional[float]]:
     return [_sanitize_float(value) for value in df[column]]
 
 
+def _load_cvd_values(symbol: str, timeframe: str, timestamps: List[int]) -> List[Optional[float]]:
+    if not timestamps:
+        return []
+
+    cvd_df = cvd_storage.get_cvd(symbol, timeframe, limit=len(timestamps) + INDICATOR_PADDING)
+    if cvd_df.empty:
+        return [None] * len(timestamps)
+
+    cvd_map = {int(row.timestamp): float(row.cvd_cumulative) for row in cvd_df.itertuples()}
+    values: List[Optional[float]] = []
+    for ts in timestamps:
+        ts_int = int(ts)
+        values.append(_sanitize_float(cvd_map.get(ts_int)))
+    return values
+
+
 def _build_trend_response(df: pd.DataFrame) -> TrendResponse:
     info = market_structure.determine_trend(df)
 
@@ -226,6 +244,10 @@ def _prepare_chart_response(df: pd.DataFrame, symbol: str, timeframe: str, limit
     df_with_swings = market_structure.detect_swing_points(df)
     df_tail = df_with_swings.tail(limit).reset_index(drop=True)
 
+    cvd_values = _load_cvd_values(symbol, timeframe, df_tail["timestamp"].astype(int).tolist())
+    df_tail = df_tail.copy()
+    df_tail["cvd"] = cvd_values
+
     candles = [
         Candle(
             timestamp=int(row.timestamp) * 1000,
@@ -246,6 +268,7 @@ def _prepare_chart_response(df: pd.DataFrame, symbol: str, timeframe: str, limit
         adx=_indicator_list(df_tail, "adx"),
         rsi=_indicator_list(df_tail, "rsi"),
         vwap=_indicator_list(df_tail, "vwap"),
+        cvd=_indicator_list(df_tail, "cvd"),
     )
 
     levels = market_structure.identify_support_resistance(df_with_swings, tolerance=LEVEL_TOLERANCE)
