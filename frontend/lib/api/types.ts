@@ -23,6 +23,12 @@ export interface Asset {
   ema_50: number;
 }
 
+export interface KeyLevel {
+  price: number;
+  label: string;
+  type: 'poc_weekly' | 'poc_daily' | 'vah' | 'val' | 'previous_high' | 'previous_low' | 'session';
+}
+
 export interface ChartData {
   symbol: string;
   timeframe: string;
@@ -37,6 +43,7 @@ export interface ChartData {
     cvd: (number | null)[];
   };
   market_structure: MarketStructure;
+  key_levels?: Record<string, KeyLevel>;
   trend: TrendInfo;
 }
 

@@ -1,6 +1,6 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BTCContext(BaseModel):
@@ -70,6 +70,12 @@ class MarketStructureResponse(BaseModel):
     swing_lows: List[SwingPoint]
 
 
+class KeyLevel(BaseModel):
+    price: float
+    label: str
+    type: str
+
+
 class TrendResponse(BaseModel):
     current: str
     strength: float
@@ -84,4 +90,5 @@ class MarketChartResponse(BaseModel):
     candles: List[Candle]
     indicators: MarketChartIndicators
     market_structure: MarketStructureResponse
+    key_levels: Dict[str, KeyLevel] = Field(default_factory=dict)
     trend: TrendResponse

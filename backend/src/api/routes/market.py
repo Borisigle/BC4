@@ -22,6 +22,7 @@ from src.api.schemas.market import (
 from src.config import settings
 from src.data.cvd_storage import CVDStorage
 from src.data.data_storage import DataStorage
+from src.indicators.key_levels import calculate_key_levels
 from src.indicators.market_structure import MarketStructure
 from src.indicators.technical_indicators import TechnicalIndicators
 from src.signals.btc_filter import BTCFilter
@@ -279,6 +280,12 @@ def _prepare_chart_response(df: pd.DataFrame, symbol: str, timeframe: str, limit
         swing_lows=_collect_swing_points(df_tail, "swing_low"),
     )
 
+    key_levels = calculate_key_levels(
+        df=df_with_swings,
+        timeframe=timeframe,
+        current_time=datetime.now(timezone.utc),
+    )
+
     trend = _build_trend_response(df_with_swings)
 
     return MarketChartResponse(
@@ -287,6 +294,7 @@ def _prepare_chart_response(df: pd.DataFrame, symbol: str, timeframe: str, limit
         candles=candles,
         indicators=indicators,
         market_structure=structure,
+        key_levels=key_levels,
         trend=trend,
     )
 
