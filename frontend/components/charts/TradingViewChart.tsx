@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, IChartApi, IPriceLine, ISeriesApi, LineStyle } from 'lightweight-charts';
 import { ChartData } from '@/lib/api/types';
 import { mapCandlesToSeries, mapIndicatorToSeries } from '@/lib/utils/chartHelpers';
 
@@ -26,6 +26,9 @@ export default function TradingViewChart({ data, height = 400 }: TradingViewChar
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<SeriesCollection>({});
+  const supportLinesRef = useRef<IPriceLine[]>([]);
+  const resistanceLinesRef = useRef<IPriceLine[]>([]);
+  const keyLevelLinesRef = useRef<IPriceLine[]>([]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -135,29 +138,51 @@ export default function TradingViewChart({ data, height = 400 }: TradingViewChar
 
     candles.applyOptions({ priceFormat: { type: 'price', precision: 2, minMove: 0.01 } });
 
-    // Clear existing price lines by recreating series price lines
+    supportLinesRef.current.forEach((line) => candles.removePriceLine(line));
+    resistanceLinesRef.current.forEach((line) => candles.removePriceLine(line));
+    keyLevelLinesRef.current.forEach((line) => candles.removePriceLine(line));
+
+    supportLinesRef.current = [];
+    resistanceLinesRef.current = [];
+    keyLevelLinesRef.current = [];
+
     candles.priceScale().applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
+    const keyLevels = data.key_levels ?? {};
+    Object.values(keyLevels).forEach((level) => {
+      const priceLine = candles.createPriceLine({
+        price: level.price,
+        color: 'rgba(255, 255, 255, 0.75)',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: level.label
+      });
+      keyLevelLinesRef.current.push(priceLine);
+    });
+
     data.market_structure.resistances.forEach((level) => {
-      candles.createPriceLine({
+      const priceLine = candles.createPriceLine({
         price: level.price,
         color: '#ef4444',
         lineWidth: 2,
-        lineStyle: 0,
+        lineStyle: LineStyle.Solid,
         axisLabelVisible: true,
         title: `R ${level.strength === 'strong' ? 'Fuerte' : 'Media'} (${level.touches}x)`
       });
+      resistanceLinesRef.current.push(priceLine);
     });
 
     data.market_structure.supports.forEach((level) => {
-      candles.createPriceLine({
+      const priceLine = candles.createPriceLine({
         price: level.price,
         color: '#22c55e',
         lineWidth: 2,
-        lineStyle: 0,
+        lineStyle: LineStyle.Solid,
         axisLabelVisible: true,
         title: `S ${level.strength === 'strong' ? 'Fuerte' : 'Media'} (${level.touches}x)`
       });
+      supportLinesRef.current.push(priceLine);
     });
 
     chart.timeScale().fitContent();
