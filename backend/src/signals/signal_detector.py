@@ -53,14 +53,15 @@ class SignalDetector:
             return None
 
         orderflow_result = self.orderflow_analyzer.analyze_volume_pressure(df_1h, cvd_1h, lookback=4)
-        orderflow_valid = orderflow_result["pressure"] == "BUYING" and orderflow_result["score"] >= 15
+        orderflow_score = int(orderflow_result.get("score", 0))
+        orderflow_valid = orderflow_result["pressure"] == "BUYING" and orderflow_score >= 15
         if not orderflow_valid:
             return None
 
-        base_score += int(orderflow_result["score"])
+        base_score += orderflow_score
         reasons.append(
             "Presión compradora real (ΔCVD %.2f | score %d)"
-            % (orderflow_result["cvd_change_normalized"], int(orderflow_result["score"]))
+            % (orderflow_result["cvd_change_normalized"], orderflow_score)
         )
 
         divergence = self.orderflow_analyzer.detect_cvd_divergence(df_1h["close"], cvd_1h, lookback=20)
@@ -72,14 +73,16 @@ class SignalDetector:
 
         patterns = self.pattern_detector.get_all_patterns(df_1h, support_level, None)
         pattern_valid = bool(patterns["bullish"])
+        pattern_score = min(10, int(patterns.get("score", 0))) if pattern_valid else 0
         if pattern_valid:
-            base_score += min(10, int(patterns["score"]))
+            base_score += pattern_score
             for pattern in patterns["bullish"]:
                 reasons.append(f"Patrón alcista: {pattern}")
 
         liquidity_sweep = self._detect_liquidity_sweep_long(df_1h, support_level)
+        liquidity_score = 10 if liquidity_sweep else 0
         if liquidity_sweep:
-            base_score += 10
+            base_score += liquidity_score
             reasons.append("Liquidity sweep completado en soporte")
 
         entry_zone = self._build_entry_zone_long(current_price, support_level)
@@ -89,10 +92,16 @@ class SignalDetector:
             "base_score": base_score,
             "structure_valid": structure_valid,
             "orderflow_valid": orderflow_valid,
+            "orderflow_details": orderflow_result,
+            "orderflow_score": orderflow_score,
             "pattern_valid": pattern_valid,
+            "pattern_details": patterns,
+            "pattern_score": pattern_score,
             "liquidity_sweep": liquidity_sweep,
+            "liquidity_score": liquidity_score,
             "reasons": reasons,
             "support_level": support_level,
+            "support_distance": support_distance,
             "entry_zone": entry_zone,
             "divergence": divergence,
         }
@@ -136,14 +145,15 @@ class SignalDetector:
             return None
 
         orderflow_result = self.orderflow_analyzer.analyze_volume_pressure(df_1h, cvd_1h, lookback=4)
-        orderflow_valid = orderflow_result["pressure"] == "SELLING" and orderflow_result["score"] >= 15
+        orderflow_score = int(orderflow_result.get("score", 0))
+        orderflow_valid = orderflow_result["pressure"] == "SELLING" and orderflow_score >= 15
         if not orderflow_valid:
             return None
 
-        base_score += int(orderflow_result["score"])
+        base_score += orderflow_score
         reasons.append(
             "Presión vendedora real (ΔCVD %.2f | score %d)"
-            % (orderflow_result["cvd_change_normalized"], int(orderflow_result["score"]))
+            % (orderflow_result["cvd_change_normalized"], orderflow_score)
         )
 
         divergence = self.orderflow_analyzer.detect_cvd_divergence(df_1h["close"], cvd_1h, lookback=20)
@@ -155,14 +165,16 @@ class SignalDetector:
 
         patterns = self.pattern_detector.get_all_patterns(df_1h, None, resistance_level)
         pattern_valid = bool(patterns["bearish"])
+        pattern_score = min(10, int(patterns.get("score", 0))) if pattern_valid else 0
         if pattern_valid:
-            base_score += min(10, int(patterns["score"]))
+            base_score += pattern_score
             for pattern in patterns["bearish"]:
                 reasons.append(f"Patrón bajista: {pattern}")
 
         liquidity_sweep = self._detect_liquidity_sweep_short(df_1h, resistance_level)
+        liquidity_score = 10 if liquidity_sweep else 0
         if liquidity_sweep:
-            base_score += 10
+            base_score += liquidity_score
             reasons.append("Liquidity sweep de máximos completado")
 
         entry_zone = self._build_entry_zone_short(current_price, resistance_level)
@@ -172,10 +184,16 @@ class SignalDetector:
             "base_score": base_score,
             "structure_valid": structure_valid,
             "orderflow_valid": orderflow_valid,
+            "orderflow_details": orderflow_result,
+            "orderflow_score": orderflow_score,
             "pattern_valid": pattern_valid,
+            "pattern_details": patterns,
+            "pattern_score": pattern_score,
             "liquidity_sweep": liquidity_sweep,
+            "liquidity_score": liquidity_score,
             "reasons": reasons,
             "resistance_level": resistance_level,
+            "resistance_distance": resistance_distance,
             "entry_zone": entry_zone,
             "divergence": divergence,
         }
